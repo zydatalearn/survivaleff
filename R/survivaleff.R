@@ -507,16 +507,16 @@ chisq_fisher <- function(data,
 #' n <- 100
 #' sim_data <- data.frame(
 #'  受试者编号 = paste0("S", 1:n),
-  #'  疗效 = rep(c("ORR", "Non-ORR"), each = n/2),
-  #'  免疫诱导前 = c(
-    #'   rnorm(n/2, mean = 60, sd = 10),
-    #'   rnorm(n/2, mean = 50, sd = 15)
-    #'  ),
-  #'  免疫诱导后 = c(
-    #'   rnorm(n/2, mean = 65, sd = 8),
-    #'   rnorm(n/2, mean = 55, sd = 12)
-    #'   )
-  #' )
+#'  疗效 = rep(c("ORR", "Non-ORR"), each = n/2),
+#'  免疫诱导前 = c(
+#'   rnorm(n/2, mean = 60, sd = 10),
+#'   rnorm(n/2, mean = 50, sd = 15)
+#'  ),
+#'  免疫诱导后 = c(
+#'   rnorm(n/2, mean = 65, sd = 8),
+#'   rnorm(n/2, mean = 55, sd = 12)
+#'   )
+#' )
 #' head(sim_data)
 #' type_map <- c(
 #'  "免疫诱导前" = "Pre",
