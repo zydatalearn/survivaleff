@@ -2,6 +2,13 @@
 
 export(ORR_DCR)
 export(chisq_fisher)
+export(draw_group_comparison_plot)
 export(summary_variable)
 export(survival_analysis_by_group)
 export(survival_overview)
+import(broom)
+import(car)
+import(dplyr)
+import(ggplot2)
+import(gt)
+import(tidyr)

@@ -471,3 +471,260 @@ chisq_fisher <- function(data,
     result = result
   ))
 }
+
+#' Draw Group Comparison Plot with Statistical Tests
+#'
+#' This function generates a group comparison plot for multiple timepoints or variables.
+#' It performs normality and variance homogeneity tests (Shapiro and Levene), then
+#' applies appropriate statistical comparisons (t-test or Wilcoxon test), and summarizes results in a GT table.
+#'
+#' @param data A data frame containing the input data.
+#' @param value_cols A character vector of column names representing different timepoints or measurements.
+#' @param eff_col A character string indicating the column name for grouping (e.g., treatment group).
+#' @param type_labels Optional named vector to relabel `value_cols` in the plot.
+#' @param y_label Y-axis label for the plot. Default is `"B cell(%)"`.
+#' @param y_limit A numeric vector of length 2 setting Y-axis limits. Default is `c(0, 4)`.
+#' @param y_breaks A numeric vector specifying the breaks for Y-axis. Default is `seq(0, 4, 1)`.
+#' @param palette A vector of colors used for plotting different groups. Default is a blue-yellow palette.
+#' @param p_label_y Optional numeric value or vector to control vertical position of p-value labels.
+#' @param dodge_width Width for dodging points and error bars. Default is 0.5.
+#' @param p_digits Number of decimal places to show in p-values. Default is 3.
+#' @return A list with the following components:
+#' \item{plot}{A `ggplot2` object showing the comparison plot.}
+#' \item{results}{A data frame of raw statistical test results.}
+#' \item{formatted_results}{A formatted table of results with significance, normality, and variance assumptions.}
+#' \item{gt_table}{A `gt` object showing a styled result table (if `gt` is installed).}
+#'
+#' @import dplyr ggplot2 tidyr broom car gt
+#' @example
+#' set.seed(123)
+#'library(ggplot2)
+#'library(gt)
+#'library(tidyverse)
+#'library(readxl)
+#'library(broom)
+#'library(car)
+#' n <- 100
+#' sim_data <- data.frame(
+#'  受试者编号 = paste0("S", 1:n),
+  #'  疗效 = rep(c("ORR", "Non-ORR"), each = n/2),
+  #'  免疫诱导前 = c(
+    #'   rnorm(n/2, mean = 60, sd = 10),
+    #'   rnorm(n/2, mean = 50, sd = 15)
+    #'  ),
+  #'  免疫诱导后 = c(
+    #'   rnorm(n/2, mean = 65, sd = 8),
+    #'   rnorm(n/2, mean = 55, sd = 12)
+    #'   )
+  #' )
+#' head(sim_data)
+#' type_map <- c(
+#'  "免疫诱导前" = "Pre",
+#'  "免疫诱导后" = "Post"
+#' )
+#' result <- draw_group_comparison_plot(
+#'  data = sim_data,
+#'  value_cols = c(3:6),#指点列转长格式
+#'  eff_col = "疗效",#分组变量
+#'   type_labels = type_map,#x轴标签
+#'  y_label = "T lymphocyte content",
+#'  y_limit = c(10, 100),
+#'  y_breaks = seq(10, 100, 20),
+#'  p_label_y=c(90),#p值显示位置
+#'  dodge_width=0.1,#偏倚
+#'   palette = c("#1B9E77", "#D95F02"),
+#'   p_digits = 3
+#' )
+#' result$plot
+#' result$gt_table
+#' @export
+#---组间比较 绘图 输出p值----
+draw_group_comparison_plot <- function(data, value_cols, eff_col,
+                                       type_labels = NULL, y_label = "B cell(%)",
+                                       y_limit = c(0, 4), y_breaks = seq(0, 4, 1),
+                                       palette = c("#0073C2FF", "#EFC000FF"),
+                                       p_label_y = NULL, dodge_width = 0.5,
+                                       p_digits = 3) {
+  dt_long <- data %>%
+    pivot_longer(cols = all_of(value_cols),
+                 names_to = "type", values_to = "value") %>%
+    na.omit()
+
+  if (!is.null(type_labels)) {
+    dt_long$type <- factor(dt_long$type,
+                           levels = names(type_labels), labels = type_labels)
+  }
+
+  norm_levene <- dt_long %>%
+    group_by(type) %>%
+    summarise(
+      p_shapiro = shapiro.test(value)$p.value,
+      p_levene = leveneTest(value ~ as.factor(get(eff_col)))[[1, "Pr(>F)"]],
+      .groups = "drop"
+    )
+
+  data_split <- dt_long %>% group_split(type)
+
+  test_fun <- function(df) {
+    type_name <- unique(df$type)
+    p_shapiro <- norm_levene$p_shapiro[norm_levene$type == type_name]
+    p_levene <- norm_levene$p_levene[norm_levene$type == type_name]
+
+    if (p_shapiro > 0.05) {
+      if (p_levene > 0.05) {
+        res <- t.test(value ~ get(eff_col), data = df, var.equal = TRUE)
+        method <- "t.test (equal var)"
+      } else {
+        res <- t.test(value ~ get(eff_col), data = df)
+        method <- "t.test (Welch)"
+      }
+    } else {
+      res <- wilcox.test(value ~ get(eff_col), data = df)
+      method <- "wilcox.test"
+    }
+
+    broom::tidy(res) %>%
+      mutate(type = type_name,
+             method = method,
+             p_shapiro = p_shapiro,
+             p_levene = p_levene)
+  }
+
+  results <- lapply(data_split, test_fun) %>%
+    bind_rows() %>%
+    mutate(
+      label = ifelse(p.value < 0.001, "p < 0.001",
+                     paste0("p = ", sprintf(paste0("%.", p_digits, "f"), p.value)))
+    )
+
+  if (is.null(p_label_y)) {
+    y_range <- diff(range(dt_long$value, na.rm = TRUE))
+    results$y_pos <- max(dt_long$value, na.rm = TRUE) + 0.1 * y_range
+  } else {
+    if (length(p_label_y) == 1) {
+      results$y_pos <- p_label_y
+    } else if (length(p_label_y) == nrow(results)) {
+      results$y_pos <- p_label_y
+    } else {
+      warning("p_label_y长度不匹配，使用默认位置")
+      y_range <- diff(range(dt_long$value, na.rm = TRUE))
+      results$y_pos <- max(dt_long$value, na.rm = TRUE) + 0.1 * y_range
+    }
+  }
+
+  format_p_value <- function(p) {
+    ifelse(p < 0.001, "<0.001", sprintf(paste0("%.", p_digits, "f"), p))
+  }
+
+  formatted_results <- results %>%
+    select(type, method, p_shapiro, p_levene, p.value, estimate) %>%
+    mutate(
+      p_shapiro = format_p_value(p_shapiro),
+      p_levene = format_p_value(p_levene),
+      p.value = format_p_value(p.value),
+      estimate = sprintf("%.4f", estimate),
+      `正态性检验` = ifelse(p_shapiro > 0.05, "正态", "非正态"),
+      `方差齐性` = ifelse(p_levene > 0.05, "齐性", "不齐"),
+      `显著性` = case_when(
+        p.value < 0.001 ~ "***",
+        p.value < 0.01 ~ "**",
+        p.value < 0.05 ~ "*",
+        TRUE ~ "不显著"
+      )
+    ) %>%
+    select(
+      `时间点` = type,
+      `检验方法` = method,
+      `正态性检验p值` = p_shapiro,
+      `正态性` = `正态性检验`,
+      `方差齐性p值` = p_levene,
+      `方差齐性` = `方差齐性`,
+      `组间比较p值` = p.value,
+      `显著性` = `显著性`,
+      `效应量估计` = estimate
+    )
+
+  if (requireNamespace("gt", quietly = TRUE)) {
+    gt_table <- formatted_results %>%
+      gt::gt() %>%
+      gt::tab_header(
+        title = "组间比较统计结果",
+        subtitle = paste0(eff_col, "组在不同时间点的比较")
+      ) %>%
+      gt::tab_style(
+        style = gt::cell_text(weight = "bold"),
+        locations = gt::cells_column_labels()
+      ) %>%
+      gt::tab_style(
+        style = gt::cell_fill(color = "lightgreen"),
+        locations = gt::cells_body(
+          columns = "显著性",
+          rows = `显著性` == "***"
+        )
+      ) %>%
+      gt::tab_style(
+        style = gt::cell_fill(color = "lightyellow"),
+        locations = gt::cells_body(
+          columns = "显著性",
+          rows = `显著性` == "**"
+        )
+      ) %>%
+      gt::tab_style(
+        style = gt::cell_fill(color = "lightpink"),
+        locations = gt::cells_body(
+          columns = "显著性",
+          rows = `显著性` == "*"
+        )
+      )
+  } else {
+    warning("gt包未安装，无法创建美化表格")
+    gt_table <- NULL
+  }
+
+  summary_data <- dt_long %>%
+    group_by(type, !!sym(eff_col)) %>%
+    summarise(
+      mean = mean(value, na.rm = TRUE),
+      se = sd(value, na.rm = TRUE) / sqrt(n()),
+      .groups = "drop"
+    )
+
+  p <- ggplot(dt_long, aes(x = type, y = value, color = .data[[eff_col]])) +
+    geom_jitter(position = position_jitterdodge(jitter.width = 0.2,
+                                                dodge.width = dodge_width),
+                alpha = 0.6, size = 1) +
+    geom_errorbar(data = summary_data,
+                  aes(y = mean, ymin = mean - se, ymax = mean + se,
+                      color = .data[[eff_col]]),
+                  width = 0.1, size = 0.8,
+                  position = position_dodge(width = dodge_width)) +
+    geom_point(data = summary_data,
+               aes(y = mean, fill = .data[[eff_col]]),
+               size = 2.5, shape = 21, color = "black",
+               position = position_dodge(width = dodge_width)) +
+    geom_text(data = results,
+              aes(x = type, y = y_pos, label = label),
+              inherit.aes = FALSE,
+              size = 4) +
+    geom_line(data = summary_data,
+              aes(x = type, y = mean, group = !!sym(eff_col),
+                  color = !!sym(eff_col)),
+              size = 0.8, position = position_dodge(width = dodge_width)) +
+    scale_y_continuous(breaks = y_breaks, limits = y_limit, expand = c(0.1, 0.1)) +
+    scale_color_manual(values = palette) +
+    scale_fill_manual(values = palette) +
+    theme_classic(base_size = 14) +
+    labs(y = y_label, x = NULL, color = NULL, fill = NULL,
+         caption = "Error bars represent standard error of the mean (SEM).") +
+    theme(legend.position = "top",
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 12),
+          plot.caption = element_text(size = 10))
+
+  return(list(
+    plot = p,
+    results = results,
+    formatted_results = formatted_results,
+    gt_table = gt_table
+  ))
+}
