@@ -1,0 +1,12 @@
+Package: survivaleff
+Title: Quickly obtain the basic results of survival data
+Version: 1.4.2
+Authors@R: 
+    person("camellia","zy",,"1351934363@qq.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: According to the provided single variable, automatically identify whether it is a categorical variable or a continuous variable. If it is a continuous variable, provide the basic characteristics of this variable and conduct a normality test(shapiro.test). If it is a categorical variable, provide the frequency and percentage. When drawing the overall survival curve, the median time and 95% CI confidence interval can be quickly viewed and the survival rates at the specified times can be output.When conducting subgroup analysis, the model characteristics can be quickly obtained, including the median survival data of each group, subgroup results, HR value, and Log-rank test results.Rapid calculation of 95 per cent confidence intervals for ORR, DCR rates (based on Clopper-Pearson method). 
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
