@@ -1,0 +1,12 @@
+Package: survivaleff
+Title: Quickly obtain the basic results of survival data
+Version: 1.5.5
+Authors@R: 
+    person("camellia","zy",,"1351934363@qq.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: This R toolkit enables automated clinical data analysis. It characterizes variables as continuous or categorical, providing descriptive statistics (mean/SD, medians/ranges, frequencies). Survival analysis computes median survival with confidence intervals, survival rates at specific timepoints, and supports subgroup comparisons including hazard ratios (HRs) and log-rank p-values. Therapy response metrics (e.g., ORR/DCR) are reported with exact confidence intervals. Association tests automatically select chi-square or Fisher's exact methods based on data characteristics. Longitudinal group comparisons integrate statistical testing (t-test or Wilcoxon selected via normality/variance checks) with visualization, generating publication-ready plots annotated with key results. The system features intelligent method selection, dynamic p-value formatting, medical outcome tracking (OS/PFS/ORR), and consolidated reporting for clinical research.
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
