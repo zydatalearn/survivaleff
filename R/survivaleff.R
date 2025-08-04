@@ -241,6 +241,7 @@ survival_overview <- function(data, time_var, status_var,time_points=c(6,12),dig
 #' result
 #' @return A part of input data.
 #' @export
+<<<<<<< HEAD
 survival_analysis_by_group <- function(data, time_var, status_var, group_var,
                                        digits = 2, p_digits = 3,
                                        time_points = c(6, 12, 24)) {
@@ -410,6 +411,83 @@ survival_analysis_by_group <- function(data, time_var, status_var, group_var,
   return(invisible(result))
 }
 
+=======
+survival_analysis_by_group <- function(data, time_var, status_var, group_var, digits = 2, p_digits = 3) {
+  data <- data.frame(data)
+  data[[group_var]] <- factor(data[[group_var]])
+
+  cox_model <- coxph(Surv(data[[time_var]], data[[status_var]]) ~ data[[group_var]], data = data)
+  cox_summary <- summary(cox_model)
+
+  HR <- sprintf(paste0('%.', digits, 'f'), cox_summary$coefficients[, 2])
+  Pvalue <- ifelse(cox_summary$coefficients[, 5] < 0.001, "<0.001",
+                   sprintf(paste0('%.', p_digits, 'f'), cox_summary$coefficients[, 5]))
+
+  CI5 <- sprintf(paste0('%.', digits, 'f'), cox_summary$conf.int[, 3])
+  CI95 <- sprintf(paste0('%.', digits, 'f'), cox_summary$conf.int[, 4])
+  CI <- paste0(HR, "[95%CI,", CI5, "-", CI95, "]")
+
+  variable_diff <- survdiff(Surv(data[[time_var]], data[[status_var]]) ~ data[[group_var]], data = data)
+  p_val <- sprintf(paste0('%.', p_digits, 'f'),1 - pchisq(variable_diff$chisq, length(variable_diff$n) - 1))
+  p_val <- ifelse(p_val < 0.001, "<0.001", p_val)
+
+  fit <- survfit(Surv(data[[time_var]], data[[status_var]]) ~ data[[group_var]], data = data)
+  PH_test = cox.zph(cox_model)
+  fit_summary <- summary(fit)
+
+  group_levels <- levels(data[[group_var]])
+  median_survival_by_group <- sapply(group_levels, function(group_name) {
+    group_index <- which(group_levels == group_name)
+    median_time <- fit_summary$table[group_index, "median"]
+    ci_lower <- fit_summary$table[group_index, "0.95LCL"]
+    ci_upper <- fit_summary$table[group_index, "0.95UCL"]
+
+    group_data <- data[data[[group_var]] == group_name, ]
+    event_count <- sum(group_data[[status_var]] == 1, na.rm = TRUE)
+    total_count <- sum(!is.na(group_data[[time_var]]))
+    event_percentage <- sprintf(paste0('%.', digits, 'f'),event_count/total_count*100)
+
+    median_time_formatted <- sprintf(paste0('%.', digits, 'f'), median_time)
+    ci_lower_formatted <- sprintf(paste0('%.', digits, 'f'), ci_lower)
+    ci_upper_formatted <- sprintf(paste0('%.', digits, 'f'), ci_upper)
+    event_count_formatted <- event_count
+    total_count_formatted <- total_count
+
+    paste0(group_name,"Events:", event_count_formatted, "/",
+           total_count_formatted, "(", event_percentage, "%) ",
+           ":Median=", median_time_formatted, "(", ci_lower_formatted,
+           "-", ci_upper_formatted,
+           ")")
+  })
+
+  result <- list(
+    KM_imformation = fit,
+    Cox_Model_Summary = cox_summary,
+    PH_test = PH_test,
+    HR_CI = CI,
+    P_value = Pvalue,
+    P_value_Diff = p_val,
+    Median_Survival_by_Group = median_survival_by_group
+  )
+  return(result)
+  cat("\nCox model：\n")
+  print(cox_summary)
+  cat("\nCox model PH test：\n")
+  print(PH_test)
+  cat("\nKM information：\n")
+  print(fit)
+  cat("\nthe median of subgroup and 95% CI：\n")
+  print(median_survival_by_group)
+  cat("\nHR 和 95%CI：\n")
+  print(CI)
+  cat("\ncox model p-value：\n")
+  print(Pvalue)
+  cat("\nLog-rank p-value：\n")
+  print(p_val)
+}
+
+
+>>>>>>> 0c54e4e883b8247f751392d74ce015a5dae798ca
 ####ORR_DCR计算####
 #' Used to quickly calculate ORR, DCR values
 #'

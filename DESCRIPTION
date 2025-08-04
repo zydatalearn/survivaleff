@@ -1,6 +1,10 @@
 Package: survivaleff
 Title: Quickly obtain the basic results of survival data
+<<<<<<< HEAD
 Version: 1.5.5
+=======
+Version: 1.5.2
+>>>>>>> 0c54e4e883b8247f751392d74ce015a5dae798ca
 Authors@R: 
     person("camellia","zy",,"1351934363@qq.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))

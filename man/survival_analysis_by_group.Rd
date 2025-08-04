@@ -10,8 +10,12 @@ survival_analysis_by_group(
   status_var,
   group_var,
   digits = 2,
+<<<<<<< HEAD
   p_digits = 3,
   time_points = c(6, 12, 24)
+=======
+  p_digits = 3
+>>>>>>> 0c54e4e883b8247f751392d74ce015a5dae798ca
 )
 }
 \arguments{
